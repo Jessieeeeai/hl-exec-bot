@@ -1,0 +1,56 @@
+name: F6 自动交易机器人 (Hyperliquid)
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # 每 5 分钟
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "运行模式 (dry_run / live), 留空则用 EXEC_MODE variable"
+        required: false
+        default: ""
+
+# 防止两轮重叠执行 (重复下单的最大来源)
+concurrency:
+  group: exec-bot
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖
+        run: pip install -q hyperliquid-python-sdk eth-account
+
+      - name: 运行 exec_bot
+        env:
+          COINGLASS_API_KEY: ${{ secrets.COINGLASS_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          HL_PRIVATE_KEY: ${{ secrets.HL_PRIVATE_KEY }}
+          HL_ACCOUNT_ADDRESS: ${{ secrets.HL_ACCOUNT_ADDRESS }}
+          # 模式优先级: 手动触发输入 > 仓库 Variable (Settings->Variables->EXEC_MODE)
+          EXEC_MODE: ${{ github.event.inputs.mode || vars.EXEC_MODE || 'dry_run' }}
+          HL_TESTNET: ${{ vars.HL_TESTNET || '0' }}
+        run: python3 exec_bot.py
+
+      - name: 提交 live_state.json
+        run: |
+          git config user.name "exec-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add live_state.json || true
+          if ! git diff --cached --quiet; then
+            git commit -m "exec-bot state $(date -u +'%Y-%m-%d %H:%M')"
+            git pull --rebase origin main || true
+            git push
+          fi
