@@ -267,14 +267,14 @@ def try_open_new(state, broker, bars, equity, msgs, dry_run):
         rec["entry_oid"] = oid
         rec["planned_size"] = size
         state["signals"].append(rec)
-        risk_usd = equity * exec_risk.RISK_PCT
+        risk_usd = size * abs(rec["trigger_price"] - rec["sl"])  # 止损时的实际亏损额
         msgs.append(
             f"📡 <b>新 F6 信号</b> {'🟩 做多' if rec['direction']=='long' else '🟥 做空'}\n"
             f"━━━━━━━━━━━━━━━\n"
             f"形态: {rec['pattern_desc']}\n"
             f"入场触发: <code>${rec['trigger_price']:,.2f}</code> (已挂交易所触发单)\n"
             f"止损: <code>${rec['sl']:,.2f}</code> | 止盈: <code>${rec['tp']:,.2f}</code> (R={CFG.r_multiple})\n"
-            f"仓位: {size} {COIN} (≈${notional:,.0f} 名义, 风险 ${risk_usd:,.2f})\n"
+            f"仓位: {size} {COIN} (≈${notional:,.0f} 名义, 止损亏 ${risk_usd:,.2f})\n"
             f"有效期至: {rec['expires_at']}")
 
 
@@ -351,7 +351,8 @@ def main():
                     msgs.append(f"🟢 [演习] 已入场 {sig['direction']} @ ${sig['entry_price']:,.2f}")
                 elif sig["status"] in ("tp_hit", "sl_hit"):
                     r = sig["result_r"]
-                    pnl = equity * exec_risk.RISK_PCT * r
+                    per_r = (sig.get("planned_size") or 0) * abs(sig["trigger_price"] - sig["sl"])
+                    pnl = per_r * r
                     _close_trade(state, sig, sig["status"], sig["exit_price"], pnl, msgs)
                 elif sig["status"] in ("expired", "invalidated"):
                     msgs.append(f"⚪️ [演习] 信号作废 ({sig['status']})")

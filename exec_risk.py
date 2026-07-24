@@ -5,8 +5,10 @@
 from datetime import datetime, timezone
 
 # ===== 可调参数 (改这里, 不要在代码里散落魔法数字) =====
-RISK_PCT = 0.01            # 单笔风险 = 权益 * 1%
-MAX_LEVERAGE = 5           # 杠杆上限 (名义仓位/权益)
+SIZING_MODE = "fixed_notional"  # fixed_notional=每单固定名义仓位 / risk_pct=按权益百分比风险
+FIXED_NOTIONAL_USD = 200.0      # fixed_notional 模式: 每单名义价值 (保证金$20 x 10倍)
+RISK_PCT = 0.01                 # risk_pct 模式: 单笔风险 = 权益 * 1%
+MAX_LEVERAGE = 10               # 杠杆上限 (也是交易所侧的杠杆设置)
 MIN_NOTIONAL_USD = 10.0    # HL 最小下单名义价值
 MAX_CONCURRENT = 1         # 同时最多持有几个仓位 (O1: 单仓互斥)
 DAILY_LOSS_LIMIT_R = 2.0   # 当日(UTC)累计亏损达 -2R 后当日停止开新单
@@ -24,14 +26,18 @@ def position_size(equity: float, entry_px: float, sl_px: float) -> tuple:
     if sl_dist_pct > MAX_SL_DIST_PCT:
         return 0.0, 0.0, f"止损距离 {sl_dist_pct:.1%} 超过上限 {MAX_SL_DIST_PCT:.0%}"
 
-    risk_usd = equity * RISK_PCT
-    size = risk_usd / sl_dist                 # 币数量
-    notional = size * entry_px
-    # 杠杆上限压制
-    max_notional = equity * MAX_LEVERAGE
-    if notional > max_notional:
-        size = max_notional / entry_px
-        notional = max_notional
+    if SIZING_MODE == "fixed_notional":
+        notional = min(FIXED_NOTIONAL_USD, equity * MAX_LEVERAGE)
+        size = notional / entry_px
+    else:
+        risk_usd = equity * RISK_PCT
+        size = risk_usd / sl_dist             # 币数量
+        notional = size * entry_px
+        # 杠杆上限压制
+        max_notional = equity * MAX_LEVERAGE
+        if notional > max_notional:
+            size = max_notional / entry_px
+            notional = max_notional
     if notional < MIN_NOTIONAL_USD:
         return 0.0, 0.0, f"名义价值 ${notional:.2f} 低于交易所最小值 ${MIN_NOTIONAL_USD}"
     return size, notional, ""

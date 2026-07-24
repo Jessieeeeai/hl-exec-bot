@@ -90,9 +90,11 @@ def bars_flat(px=99000.0, n=5):
 
 class TestRisk(unittest.TestCase):
     def test_position_size_normal(self):
-        # 权益1000, 风险1%=10, 止损距离2% (entry 100k, sl 98k)
-        size, notional, why = exec_risk.position_size(1000, 100000, 98000)
-        self.assertAlmostEqual(size * 2000, 10, delta=0.01)  # risk_usd = size*dist
+        # 固定名义 $200: entry 100k -> size 0.002, 止损距离2% -> 止损亏 $4
+        size, notional, why = exec_risk.position_size(198, 100000, 98000)
+        self.assertAlmostEqual(notional, 200, delta=0.01)
+        self.assertAlmostEqual(size, 0.002, places=6)
+        self.assertAlmostEqual(size * 2000, 4.0, delta=0.01)  # 止损亏损
         self.assertEqual(why, "")
 
     def test_reject_wide_sl(self):
@@ -101,14 +103,14 @@ class TestRisk(unittest.TestCase):
         self.assertIn("止损距离", why)
 
     def test_leverage_cap(self):
-        # 止损距离 0.1% -> 名义会爆掉, 应被压到 5x
-        size, notional, why = exec_risk.position_size(1000, 100000, 99900)
-        self.assertLessEqual(notional, 1000 * exec_risk.MAX_LEVERAGE + 1)
+        # 权益 $15 -> 名义被压到 15*10=$150 而不是 $200
+        size, notional, why = exec_risk.position_size(15, 100000, 98000)
+        self.assertLessEqual(notional, 15 * exec_risk.MAX_LEVERAGE + 0.01)
 
     def test_min_notional(self):
-        size, _, why = exec_risk.position_size(100, 100000, 95100)  # 风险$1, 距离4.9% -> $20 名义
+        size, _, why = exec_risk.position_size(198, 100000, 95100)  # $200 名义 > $10
         self.assertGreater(size, 0)
-        size, _, why = exec_risk.position_size(20, 100000, 95100)  # 名义 $4 < $10
+        size, _, why = exec_risk.position_size(0.5, 100000, 95100)  # 名义 $5 < $10
         self.assertEqual(size, 0)
 
     def test_gate_halted(self):
