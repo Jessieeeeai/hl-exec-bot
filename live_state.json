@@ -1,8 +1,8 @@
 {
   "signals": [],
   "trades": [],
-  "anchor_ts": null,
-  "started": false,
-  "base_equity": null,
+  "anchor_ts": 1784854800,
+  "started": true,
+  "base_equity": 0.0,
   "last_fill_check_ms": 0
 }
