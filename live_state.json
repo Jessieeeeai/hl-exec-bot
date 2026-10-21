@@ -1799,6 +1799,24 @@
       "exit_time": null,
       "result_r": null,
       "skip_reason": "权益 $0.00 低于下限 $50.0"
+    },
+    {
+      "signal_time": "2026-10-15 21:00 UTC",
+      "signal_ts": 1792098000,
+      "direction": "long",
+      "trigger_price": 82385.8,
+      "sl": 80251.42,
+      "tp": 86654.57,
+      "expires_at": "2026-10-16 01:00 UTC",
+      "expires_ts": 1792112400,
+      "pattern_desc": "看涨反转 (急跌后底部缠绕)",
+      "status": "skipped",
+      "entry_price": null,
+      "entry_time": null,
+      "exit_price": null,
+      "exit_time": null,
+      "result_r": null,
+      "skip_reason": "权益 $0.00 低于下限 $50.0"
     }
   ],
   "trades": [],
